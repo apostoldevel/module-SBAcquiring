@@ -10,7 +10,7 @@ Module Name:
 
 Notices:
 
-  Module: SberBank
+  Module: Sberbank Acquiring
 
 Author:
 
@@ -33,11 +33,11 @@ namespace Apostol {
 
         //--------------------------------------------------------------------------------------------------------------
 
-        //-- CSberBank ------------------------------------------------------------------------------------------------
+        //-- CSBAcquiring ----------------------------------------------------------------------------------------------
 
         //--------------------------------------------------------------------------------------------------------------
 
-        class CSberBank: public CApostolModule {
+        class CSBAcquiring: public CApostolModule {
         private:
 
             CDateTime m_HeartbeatInterval;
@@ -76,12 +76,12 @@ namespace Apostol {
 
         public:
 
-            explicit CSberBank(CModuleProcess *AProcess);
+            explicit CSBAcquiring(CModuleProcess *AProcess);
 
-            ~CSberBank() override = default;
+            ~CSBAcquiring() override = default;
 
-            static class CSberBank *CreateModule(CModuleProcess *AProcess) {
-                return new CSberBank(AProcess);
+            static class CSBAcquiring *CreateModule(CModuleProcess *AProcess) {
+                return new CSBAcquiring(AProcess);
             }
 
             bool CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization);

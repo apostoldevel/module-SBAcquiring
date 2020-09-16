@@ -10,7 +10,7 @@ Module Name:
 
 Notices:
 
-  Module: SberBank
+  Module: Sberbank Acquiring
 
 Author:
 
@@ -24,7 +24,7 @@ Author:
 //----------------------------------------------------------------------------------------------------------------------
 
 #include "Core.hpp"
-#include "SberBank.hpp"
+#include "SBAcquiring.hpp"
 //----------------------------------------------------------------------------------------------------------------------
 
 #include "jwt.h"
@@ -38,12 +38,12 @@ namespace Apostol {
 
         //--------------------------------------------------------------------------------------------------------------
 
-        //-- CSberBank ---------------------------------------------------------------------------------------------
+        //-- CSBAcquiring ----------------------------------------------------------------------------------------------
 
         //--------------------------------------------------------------------------------------------------------------
 
-        CSberBank::CSberBank(CModuleProcess *AProcess) : CApostolModule(AProcess, "sberbank") {
-            CSberBank::InitMethods();
+        CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sberbank") {
+            CSBAcquiring::InitMethods();
 #ifdef _DEBUG
             m_HeartbeatInterval = (CDateTime) 15 / SecsPerDay; // 15 sec
 #else
@@ -54,7 +54,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::InitMethods() {
+        void CSBAcquiring::InitMethods() {
 #if defined(_GLIBCXX_RELEASE) && (_GLIBCXX_RELEASE >= 9)
             m_pMethods->AddObject(_T("POST")   , (CObject *) new CMethodHandler(true , [this](auto && Connection) { DoProxy(Connection); }));
             m_pMethods->AddObject(_T("OPTIONS"), (CObject *) new CMethodHandler(true , [this](auto && Connection) { DoOptions(Connection); }));
@@ -66,65 +66,25 @@ namespace Apostol {
             m_pMethods->AddObject(_T("PATCH")  , (CObject *) new CMethodHandler(false, [this](auto && Connection) { MethodNotAllowed(Connection); }));
             m_pMethods->AddObject(_T("CONNECT"), (CObject *) new CMethodHandler(false, [this](auto && Connection) { MethodNotAllowed(Connection); }));
 #else
-            m_pMethods->AddObject(_T("POST")   , (CObject *) new CMethodHandler(true , std::bind(&CSberBank::DoProxy, this, _1)));
-            m_pMethods->AddObject(_T("OPTIONS"), (CObject *) new CMethodHandler(true , std::bind(&CSberBank::DoOptions, this, _1)));
-            m_pMethods->AddObject(_T("GET")    , (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
-            m_pMethods->AddObject(_T("HEAD")   , (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
-            m_pMethods->AddObject(_T("PUT")    , (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
-            m_pMethods->AddObject(_T("DELETE") , (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
-            m_pMethods->AddObject(_T("TRACE")  , (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
-            m_pMethods->AddObject(_T("PATCH")  , (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
-            m_pMethods->AddObject(_T("CONNECT"), (CObject *) new CMethodHandler(false, std::bind(&CSberBank::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("POST")   , (CObject *) new CMethodHandler(true , std::bind(&CSBAcquiring::DoProxy, this, _1)));
+            m_pMethods->AddObject(_T("OPTIONS"), (CObject *) new CMethodHandler(true , std::bind(&CSBAcquiring::DoOptions, this, _1)));
+            m_pMethods->AddObject(_T("GET")    , (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("HEAD")   , (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("PUT")    , (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("DELETE") , (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("TRACE")  , (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("PATCH")  , (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
+            m_pMethods->AddObject(_T("CONNECT"), (CObject *) new CMethodHandler(false, std::bind(&CSBAcquiring::MethodNotAllowed, this, _1)));
 #endif
         }
         //--------------------------------------------------------------------------------------------------------------
-/*
-        void CSberBank::InitServer() {
 
-            auto OnExecuted = [this](CPQPollQuery *APollQuery) {
-
-                CPQResult *Result;
-                CStringList SQL;
-
-                try {
-                    for (int I = 0; I < APollQuery->Count(); I++) {
-                        Result = APollQuery->Results(I);
-
-                        if (Result->ExecStatus() != PGRES_TUPLES_OK)
-                            throw Delphi::Exception::EDBError(Result->GetErrorMessage());
-
-                        if (!Result->GetIsNull(0, 0))
-                            m_ClientToken = Result->GetValue(0, 0);
-                    }
-                } catch (std::exception &e) {
-                    m_CheckDate = Now() + (CDateTime) 60 / SecsPerDay;
-                    Log()->Error(APP_LOG_EMERG, 0, e.what());
-                }
-            };
-
-            auto OnException = [this](CPQPollQuery *APollQuery, Delphi::Exception::Exception *AException) {
-                m_CheckDate = Now() + (CDateTime) 60 / SecsPerDay;
-                Log()->Error(APP_LOG_EMERG, 0, AException->what());
-            };
-
-            CStringList SQL;
-
-            SQL.Add(CString().Format("SELECT * FROM daemon.token(%s, %s, '%s'::jsonb);",
-                                     PQQuoteLiteral(Authorization.Username).c_str(),
-                                     PQQuoteLiteral(Authorization.Password).c_str(),
-                                     Json.ToString().c_str()
-            ));
-
-            ExecSQL(SQL, nullptr, OnExecuted, OnException);
-        }
-        //--------------------------------------------------------------------------------------------------------------
-*/
-        void CSberBank::DoVerbose(CSocketEvent *Sender, CTCPConnection *AConnection, LPCTSTR AFormat, va_list args) {
+        void CSBAcquiring::DoVerbose(CSocketEvent *Sender, CTCPConnection *AConnection, LPCTSTR AFormat, va_list args) {
             Log()->Debug(0, AFormat, args);
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSberBank::DoProxyExecute(CTCPConnection *AConnection) {
+        bool CSBAcquiring::DoProxyExecute(CTCPConnection *AConnection) {
 
             auto LProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
             auto LProxy = dynamic_cast<CHTTPProxy*> (LProxyConnection->Client());
@@ -183,7 +143,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::DoProxyException(CTCPConnection *AConnection, Delphi::Exception::Exception *AException) {
+        void CSBAcquiring::DoProxyException(CTCPConnection *AConnection, Delphi::Exception::Exception *AException) {
 
             auto LProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
             auto LProxy = dynamic_cast<CHTTPProxy*> (LProxyConnection->Client());
@@ -200,7 +160,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::DoEventHandlerException(CPollEventHandler *AHandler, Delphi::Exception::Exception *AException) {
+        void CSBAcquiring::DoEventHandlerException(CPollEventHandler *AHandler, Delphi::Exception::Exception *AException) {
             auto LConnection = dynamic_cast<CHTTPClientConnection*> (AHandler->Binding());
             auto LProxy = dynamic_cast<CHTTPProxy*> (LConnection->Client());
 
@@ -214,7 +174,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::DoProxyConnected(CObject *Sender) {
+        void CSBAcquiring::DoProxyConnected(CObject *Sender) {
             auto LConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
             if (LConnection != nullptr) {
                 Log()->Message(_T("[%s:%d] Proxy connected."), LConnection->Socket()->Binding()->PeerIP(),
@@ -223,7 +183,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::DoProxyDisconnected(CObject *Sender) {
+        void CSBAcquiring::DoProxyDisconnected(CObject *Sender) {
             auto LConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
             if (LConnection != nullptr) {
                 Log()->Message(_T("[%s:%d] Proxy disconnected."), LConnection->Socket()->Binding()->PeerIP(),
@@ -232,7 +192,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        CHTTPProxy *CSberBank::GetProxy(CHTTPServerConnection *AConnection) {
+        CHTTPProxy *CSBAcquiring::GetProxy(CHTTPServerConnection *AConnection) {
             auto LProxy = m_ProxyManager.Add(AConnection);
 #if defined(_GLIBCXX_RELEASE) && (_GLIBCXX_RELEASE >= 9)
             LProxy->OnVerbose([this](auto && Sender, auto && AConnection, auto && AFormat, auto && args) { DoVerbose(Sender, AConnection, AFormat, args); });
@@ -245,21 +205,21 @@ namespace Apostol {
             LProxy->OnConnected([this](auto && Sender) { DoProxyConnected(Sender); });
             LProxy->OnDisconnected([this](auto && Sender) { DoProxyDisconnected(Sender); });
 #else
-            LProxy->OnVerbose(std::bind(&CSberBank::DoVerbose, this, _1, _2, _3, _4));
+            LProxy->OnVerbose(std::bind(&CSBAcquiring::DoVerbose, this, _1, _2, _3, _4));
 
-            LProxy->OnExecute(std::bind(&CSberBank::DoProxyExecute, this, _1));
+            LProxy->OnExecute(std::bind(&CSBAcquiring::DoProxyExecute, this, _1));
 
-            LProxy->OnException(std::bind(&CSberBank::DoProxyException, this, _1, _2));
-            LProxy->OnEventHandlerException(std::bind(&CSberBank::DoEventHandlerException, this, _1, _2));
+            LProxy->OnException(std::bind(&CSBAcquiring::DoProxyException, this, _1, _2));
+            LProxy->OnEventHandlerException(std::bind(&CSBAcquiring::DoEventHandlerException, this, _1, _2));
 
-            LProxy->OnConnected(std::bind(&CSberBank::DoProxyConnected, this, _1));
-            LProxy->OnDisconnected(std::bind(&CSberBank::DoProxyDisconnected, this, _1));
+            LProxy->OnConnected(std::bind(&CSBAcquiring::DoProxyConnected, this, _1));
+            LProxy->OnDisconnected(std::bind(&CSBAcquiring::DoProxyDisconnected, this, _1));
 #endif
             return LProxy;
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::SetObjectData(CHTTPServerConnection *AConnection, const CString &Token, const CJSON &Payload,
+        void CSBAcquiring::SetObjectData(CHTTPServerConnection *AConnection, const CString &Token, const CJSON &Payload,
             const CString &Agent) {
 
             auto OnExecuted = [this](CPQPollQuery *APollQuery) {
@@ -300,7 +260,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::VerifyToken(const CString &Token) {
+        void CSBAcquiring::VerifyToken(const CString &Token) {
 
             auto decoded = jwt::decode(Token);
 
@@ -338,7 +298,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSberBank::CheckAuthorizationData(CRequest *ARequest, CAuthorization &Authorization) {
+        bool CSBAcquiring::CheckAuthorizationData(CRequest *ARequest, CAuthorization &Authorization) {
 
             const auto &LHeaders = ARequest->Headers;
             const auto &LCookies = ARequest->Cookies;
@@ -367,7 +327,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSberBank::CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization) {
+        bool CSBAcquiring::CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization) {
 
             auto LRequest = AConnection->Request();
 
@@ -397,7 +357,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::DoProxy(CHTTPServerConnection *AConnection) {
+        void CSBAcquiring::DoProxy(CHTTPServerConnection *AConnection) {
 
             auto LRequest = AConnection->Request();
             auto LReply = AConnection->Reply();
@@ -479,7 +439,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSberBank::Initialization(CModuleProcess *AProcess) {
+        void CSBAcquiring::Initialization(CModuleProcess *AProcess) {
 
             m_Profile.AddPair("main", CStringList());
             m_Profile.AddPair("test", CStringList());
@@ -499,14 +459,14 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSberBank::Enabled() {
+        bool CSBAcquiring::Enabled() {
             if (m_ModuleStatus == msUnknown)
                 m_ModuleStatus = Config()->IniFile().ReadBool("worker/sberbank", "enable", false) ? msEnabled : msDisabled;
             return m_ModuleStatus == msEnabled;
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSberBank::CheckConnection(CHTTPServerConnection *AConnection) {
+        bool CSBAcquiring::CheckConnection(CHTTPServerConnection *AConnection) {
             const auto& Location = AConnection->Request()->Location;
             return Location.pathname.SubString(0, 10) == _T("/sberbank/");
         }
