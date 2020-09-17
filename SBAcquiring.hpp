@@ -2,11 +2,11 @@
 
 Program name:
 
-  Plugme
+  Apostol Web Service
 
 Module Name:
 
-  SberBank.hpp
+  SBAcquiring.hpp
 
 Notices:
 
@@ -87,6 +87,8 @@ namespace Apostol {
             bool CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization);
 
             void Initialization(CModuleProcess *AProcess) override;
+
+            void Heartbeat() override;
 
             bool Enabled() override;
             bool CheckConnection(CHTTPServerConnection *AConnection) override;

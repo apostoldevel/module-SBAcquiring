@@ -2,11 +2,11 @@
 
 Program name:
 
-  Plugme
+  Apostol Web Service
 
 Module Name:
 
-  SberBank.cpp
+  SBAcquiring.cpp
 
 Notices:
 
@@ -42,7 +42,7 @@ namespace Apostol {
 
         //--------------------------------------------------------------------------------------------------------------
 
-        CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sberbank") {
+        CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sba") {
             CSBAcquiring::InitMethods();
 #ifdef _DEBUG
             m_HeartbeatInterval = (CDateTime) 15 / SecsPerDay; // 15 sec
@@ -447,28 +447,34 @@ namespace Apostol {
             auto& mainConfig = m_Profile["main"].Value();
             auto& testConfig = m_Profile["test"].Value();
 
-            mainConfig.AddPair("uri", Config()->IniFile().ReadString("sberbank/main", "uri", "https://securepayments.sberbank.ru"));
-            mainConfig.AddPair("username", Config()->IniFile().ReadString("sberbank/main", "username", ""));
-            mainConfig.AddPair("password", Config()->IniFile().ReadString("sberbank/main", "password", ""));
+            mainConfig.AddPair("uri", Config()->IniFile().ReadString("sba/main", "uri", "https://securepayments.sberbank.ru"));
+            mainConfig.AddPair("username", Config()->IniFile().ReadString("sba/main", "username", ""));
+            mainConfig.AddPair("password", Config()->IniFile().ReadString("sba/main", "password", ""));
 
-            testConfig.AddPair("uri", Config()->IniFile().ReadString("sberbank/test", "uri", "https://3dsec.sberbank.ru"));
-            testConfig.AddPair("username", Config()->IniFile().ReadString("sberbank/test", "username", ""));
-            testConfig.AddPair("password", Config()->IniFile().ReadString("sberbank/test", "password", ""));
+            testConfig.AddPair("uri", Config()->IniFile().ReadString("sba/test", "uri", "https://3dsec.sberbank.ru"));
+            testConfig.AddPair("username", Config()->IniFile().ReadString("sba/test", "username", ""));
+            testConfig.AddPair("password", Config()->IniFile().ReadString("sba/test", "password", ""));
 
             CApostolModule::Initialization(AProcess);
         }
         //--------------------------------------------------------------------------------------------------------------
 
+        void CSBAcquiring::Heartbeat() {
+            CApostolModule::Heartbeat();
+            m_ProxyManager.CleanUp();
+        }
+        //--------------------------------------------------------------------------------------------------------------
+
         bool CSBAcquiring::Enabled() {
             if (m_ModuleStatus == msUnknown)
-                m_ModuleStatus = Config()->IniFile().ReadBool("worker/sberbank", "enable", false) ? msEnabled : msDisabled;
+                m_ModuleStatus = Config()->IniFile().ReadBool("worker/sba", "enable", false) ? msEnabled : msDisabled;
             return m_ModuleStatus == msEnabled;
         }
         //--------------------------------------------------------------------------------------------------------------
 
         bool CSBAcquiring::CheckConnection(CHTTPServerConnection *AConnection) {
             const auto& Location = AConnection->Request()->Location;
-            return Location.pathname.SubString(0, 10) == _T("/sberbank/");
+            return Location.pathname.SubString(0, 5) == _T("/sba/") || Location.pathname.SubString(0, 10) == _T("/sberbank/");
         }
     }
 }
