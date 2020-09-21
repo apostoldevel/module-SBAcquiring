@@ -43,6 +43,8 @@ namespace Apostol {
         //--------------------------------------------------------------------------------------------------------------
 
         CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sba") {
+            m_Headers.Add("Authorization");
+
             CSBAcquiring::InitMethods();
 #ifdef _DEBUG
             m_HeartbeatInterval = (CDateTime) 15 / SecsPerDay; // 15 sec
