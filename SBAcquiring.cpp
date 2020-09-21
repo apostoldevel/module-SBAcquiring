@@ -133,7 +133,7 @@ namespace Apostol {
 
                 LConnection->CloseConnection(true);
 
-                LConnection->Reply()->ContentType = CReply::json;
+                LConnection->Reply()->ContentType = CHTTPReply::json;
                 LConnection->Reply()->Content = LReply->Content;
 
                 LConnection->SendReply(LReply->Status, nullptr, true);
@@ -143,7 +143,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSBAcquiring::DoProxyException(CTCPConnection *AConnection, Delphi::Exception::Exception *AException) {
+        void CSBAcquiring::DoProxyException(CTCPConnection *AConnection, const Delphi::Exception::Exception &E) {
 
             auto LProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
             auto LProxy = dynamic_cast<CHTTPProxy*> (LProxyConnection->Client());
@@ -154,23 +154,23 @@ namespace Apostol {
 
             DebugReply(LReply);
 
-            LConnection->SendStockReply(CReply::internal_server_error, true);
+            LConnection->SendStockReply(CHTTPReply::internal_server_error, true);
 
-            Log()->Error(APP_LOG_EMERG, 0, "[%s:%d] %s", LProxy->Host().c_str(), LProxy->Port(), AException->what());
+            Log()->Error(APP_LOG_EMERG, 0, "[%s:%d] %s", LProxy->Host().c_str(), LProxy->Port(), E.what());
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSBAcquiring::DoEventHandlerException(CPollEventHandler *AHandler, Delphi::Exception::Exception *AException) {
+        void CSBAcquiring::DoEventHandlerException(CPollEventHandler *AHandler, const Delphi::Exception::Exception &E) {
             auto LConnection = dynamic_cast<CHTTPClientConnection*> (AHandler->Binding());
             auto LProxy = dynamic_cast<CHTTPProxy*> (LConnection->Client());
 
             if (Assigned(LProxy)) {
                 auto LReply = LProxy->Connection()->Reply();
-                ExceptionToJson(0, *AException, LReply->Content);
-                LProxy->Connection()->SendReply(CReply::internal_server_error, nullptr, true);
+                ExceptionToJson(0, E, LReply->Content);
+                LProxy->Connection()->SendReply(CHTTPReply::internal_server_error, nullptr, true);
             }
 
-            Log()->Error(APP_LOG_EMERG, 0, AException->what());
+            Log()->Error(APP_LOG_EMERG, 0, E.what());
         }
         //--------------------------------------------------------------------------------------------------------------
 
@@ -239,9 +239,9 @@ namespace Apostol {
                 }
             };
 
-            auto OnException = [this](CPQPollQuery *APollQuery, Delphi::Exception::Exception *AException) {
+            auto OnException = [this](CPQPollQuery *APollQuery, const Delphi::Exception::Exception &E) {
                 m_CheckDate = Now() + (CDateTime) 60 / SecsPerDay;
-                Log()->Error(APP_LOG_EMERG, 0, AException->what());
+                Log()->Error(APP_LOG_EMERG, 0, E.what());
             };
 
             const auto& Host = GetHost(AConnection);
@@ -298,7 +298,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSBAcquiring::CheckAuthorizationData(CRequest *ARequest, CAuthorization &Authorization) {
+        bool CSBAcquiring::CheckAuthorizationData(CHTTPRequest *ARequest, CAuthorization &Authorization) {
 
             const auto &LHeaders = ARequest->Headers;
             const auto &LCookies = ARequest->Cookies;
@@ -342,15 +342,15 @@ namespace Apostol {
                 if (Authorization.Schema == CAuthorization::asBasic)
                     AConnection->Data().Values("Authorization", "Basic");
 
-                ReplyError(AConnection, CReply::unauthorized, "Unauthorized.");
+                ReplyError(AConnection, CHTTPReply::unauthorized, "Unauthorized.");
             } catch (jwt::token_expired_exception &e) {
-                ReplyError(AConnection, CReply::forbidden, e.what());
+                ReplyError(AConnection, CHTTPReply::forbidden, e.what());
             } catch (jwt::token_verification_exception &e) {
-                ReplyError(AConnection, CReply::bad_request, e.what());
+                ReplyError(AConnection, CHTTPReply::bad_request, e.what());
             } catch (CAuthorizationError &e) {
-                ReplyError(AConnection, CReply::bad_request, e.what());
+                ReplyError(AConnection, CHTTPReply::bad_request, e.what());
             } catch (std::exception &e) {
-                ReplyError(AConnection, CReply::bad_request, e.what());
+                ReplyError(AConnection, CHTTPReply::bad_request, e.what());
             }
 
             return false;
@@ -362,7 +362,7 @@ namespace Apostol {
             auto LRequest = AConnection->Request();
             auto LReply = AConnection->Reply();
 
-            LReply->ContentType = CReply::json;
+            LReply->ContentType = CHTTPReply::json;
 
             auto LProxy = GetProxy(AConnection);
             auto LProxyRequest = LProxy->Request();
@@ -380,12 +380,12 @@ namespace Apostol {
             SplitColumns(LRequest->Location.pathname, LRouts, '/');
 
             if (LRouts.Count() < 2) {
-                AConnection->SendStockReply(CReply::not_found);
+                AConnection->SendStockReply(CHTTPReply::not_found);
                 return;
             }
 
             if (uri.IsEmpty()) {
-                AConnection->SendStockReply(CReply::bad_request);
+                AConnection->SendStockReply(CHTTPReply::bad_request);
                 return;
             }
 
@@ -431,7 +431,7 @@ namespace Apostol {
 
             AConnection->CloseConnection(false);
 
-            CRequest::Prepare(LProxyRequest, LRequest->Method.c_str(), Location.pathname.c_str(), LContentType.c_str());
+            CHTTPRequest::Prepare(LProxyRequest, LRequest->Method.c_str(), Location.pathname.c_str(), LContentType.c_str());
 
             DebugRequest(LProxyRequest);
 
@@ -472,8 +472,7 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSBAcquiring::CheckConnection(CHTTPServerConnection *AConnection) {
-            const auto& Location = AConnection->Request()->Location;
+        bool CSBAcquiring::CheckLocation(const CLocation &Location) {
             return Location.pathname.SubString(0, 5) == _T("/sba/") || Location.pathname.SubString(0, 10) == _T("/sberbank/");
         }
     }
