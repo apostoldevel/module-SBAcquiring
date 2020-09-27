@@ -49,7 +49,7 @@ namespace Apostol {
 
             CString m_ClientToken;
 
-            TPairs<CStringList> m_Profile;
+            TPairs<CStringList> m_Profiles;
 
             void InitMethods() override;
 
@@ -85,6 +85,8 @@ namespace Apostol {
             }
 
             bool CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization);
+
+            static void InitConfig(const CIniFile &IniFile, const CString &Profile, CStringList &Config);
 
             void Initialization(CModuleProcess *AProcess) override;
 

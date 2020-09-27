@@ -42,7 +42,7 @@ namespace Apostol {
 
         //--------------------------------------------------------------------------------------------------------------
 
-        CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sba") {
+        CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sba", "worker/sba") {
             m_Headers.Add("Authorization");
 
             CSBAcquiring::InitMethods();
@@ -374,9 +374,9 @@ namespace Apostol {
             const auto& LProfile = LRequest->Params["profile"];
             const auto& profile = LProfile.IsEmpty() ? "main" : LProfile;
 
-            const auto& uri = m_Profile[profile].Value()["uri"];
-            const auto& userName = m_Profile[profile].Value()["username"];
-            const auto& password = m_Profile[profile].Value()["password"];
+            const auto& uri = m_Profiles[profile].Value()["uri"];
+            const auto& userName = m_Profiles[profile].Value()["username"];
+            const auto& password = m_Profiles[profile].Value()["password"];
 
             CStringList LRouts;
             SplitColumns(LRequest->Location.pathname, LRouts, '/');
@@ -441,23 +441,16 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
+        void CSBAcquiring::InitConfig(const CIniFile &IniFile, const CString &Profile, CStringList &Config) {
+            Config.AddPair("uri", IniFile.ReadString(Profile, "uri", Profile == "test" ? "https://3dsec.sberbank.ru" : "https://securepayments.sberbank.ru"));
+            Config.AddPair("username", IniFile.ReadString(Profile, "username", ""));
+            Config.AddPair("password", IniFile.ReadString(Profile, "password", ""));
+        }
+        //--------------------------------------------------------------------------------------------------------------
+
         void CSBAcquiring::Initialization(CModuleProcess *AProcess) {
-
-            m_Profile.AddPair("main", CStringList());
-            m_Profile.AddPair("test", CStringList());
-
-            auto& mainConfig = m_Profile["main"].Value();
-            auto& testConfig = m_Profile["test"].Value();
-
-            mainConfig.AddPair("uri", Config()->IniFile().ReadString("sba/main", "uri", "https://securepayments.sberbank.ru"));
-            mainConfig.AddPair("username", Config()->IniFile().ReadString("sba/main", "username", ""));
-            mainConfig.AddPair("password", Config()->IniFile().ReadString("sba/main", "password", ""));
-
-            testConfig.AddPair("uri", Config()->IniFile().ReadString("sba/test", "uri", "https://3dsec.sberbank.ru"));
-            testConfig.AddPair("username", Config()->IniFile().ReadString("sba/test", "username", ""));
-            testConfig.AddPair("password", Config()->IniFile().ReadString("sba/test", "password", ""));
-
             CApostolModule::Initialization(AProcess);
+            LoadConfig(Config()->IniFile().ReadString(SectionName().c_str(), "config", "conf/sba.conf"), m_Profiles, InitConfig);
         }
         //--------------------------------------------------------------------------------------------------------------
 
@@ -469,7 +462,7 @@ namespace Apostol {
 
         bool CSBAcquiring::Enabled() {
             if (m_ModuleStatus == msUnknown)
-                m_ModuleStatus = Config()->IniFile().ReadBool("worker/sba", "enable", false) ? msEnabled : msDisabled;
+                m_ModuleStatus = Config()->IniFile().ReadBool(SectionName().c_str(), "enable", false) ? msEnabled : msDisabled;
             return m_ModuleStatus == msEnabled;
         }
         //--------------------------------------------------------------------------------------------------------------
