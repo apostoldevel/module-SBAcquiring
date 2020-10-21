@@ -258,7 +258,12 @@ namespace Apostol {
                                      PQQuoteLiteral(Host).c_str()
             ));
 
-            ExecSQL(SQL, AConnection, OnExecuted, OnException);
+            try {
+                ExecSQL(SQL, AConnection, OnExecuted, OnException);
+            } catch (Delphi::Exception::Exception &E) {
+                m_CheckDate = Now() + (CDateTime) 10 / SecsPerDay;
+                Log()->Error(APP_LOG_EMERG, 0, E.what());
+            }
         }
         //--------------------------------------------------------------------------------------------------------------
 
