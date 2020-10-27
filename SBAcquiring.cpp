@@ -91,54 +91,81 @@ namespace Apostol {
             auto LProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
             auto LProxy = dynamic_cast<CHTTPProxy*> (LProxyConnection->Client());
 
-            auto LRequest = LProxyConnection->Request();
-            auto LReply = LProxyConnection->Reply();
+            auto LProxyRequest = LProxyConnection->Request();
+            auto LProxyReply = LProxyConnection->Reply();
 
-            DebugReply(LReply);
+            DebugReply(LProxyReply);
 
             auto LConnection = LProxy->Connection();
+
+            auto LRequest = LConnection->Request();
+            auto LReply = LConnection->Reply();
 
             if (LConnection->Connected()) {
 
                 CStringList LRouts;
-                SplitColumns(LRequest->Location.pathname, LRouts, '/');
+                SplitColumns(LProxyRequest->Location.pathname, LRouts, '/');
 
-                if (LRouts.Count() >= 3 && LRouts[2] == "getBindings.do") {
-                    const auto& Json = CJSON(LReply->Content);
-                    const auto& errorCode = Json["errorCode"].AsInteger();
+                if (LRouts.Count() >= 3) {
+
+                    const auto& LAction = LRouts[2];
+
+                    const auto& reply = CJSON(LProxyReply->Content);
+                    const auto& errorCode = reply.HasOwnProperty("errorCode") ? reply["errorCode"].AsInteger() : 0;
 
                     if (errorCode == 0) {
 
                         const auto& Token = LConnection->Data()["Token"];
-                        const auto& clientId = LConnection->Data()["clientId"];
-                        const auto& Bindings = Json["bindings"];
-                        const auto& Agent = LRequest->UserAgent;
+                        const auto& Agent = LProxyRequest->UserAgent;
 
-                        CJSONValue Data;
+                        if (LAction == "registerPreAuth.do") {
 
-                        Data.Object().AddPair("type", "json");
-                        Data.Object().AddPair("code", "bindings");
-                        Data.Object().AddPair("data", Bindings);
+                            const auto& orderNumber = LRequest->FormData.Values("orderNumber");
+                            const auto& clientId = LRequest->FormData.Values("clientId");
 
-                        CJSONArray DataArray;
+                            const auto& orderId = reply["orderId"];
 
-                        DataArray.Add(Data);
+                            CJSON Payload;
 
-                        CJSON Payload;
+                            Payload.Object().AddPair("id", 0);
+                            Payload.Object().AddPair("code", orderNumber);
+                            if (!clientId.IsEmpty())
+                                Payload.Object().AddPair("client", clientId);
+                            Payload.Object().AddPair("uuid", orderId);
 
-                        Payload.Object().AddPair("id", clientId);
-                        Payload.Object().AddPair("data", DataArray);
+                            AuthorizedFetch(LConnection, Token, "/order/set", Payload, Agent);
 
-                        SetObjectData(LConnection, Token, Payload, Agent);
+                        } else if (LAction == "getBindings.do") {
+
+                            const auto& clientId = LRequest->FormData.Values("clientId");
+                            const auto& bindings = reply["bindings"];
+
+                            CJSONValue Data;
+
+                            Data.Object().AddPair("type", "json");
+                            Data.Object().AddPair("code", "bindings");
+                            Data.Object().AddPair("data", bindings);
+
+                            CJSONArray DataArray;
+
+                            DataArray.Add(Data);
+
+                            CJSON Payload;
+
+                            Payload.Object().AddPair("id", clientId);
+                            Payload.Object().AddPair("data", DataArray);
+
+                            AuthorizedFetch(LConnection, Token, "/object/data/set", Payload, Agent);
+                        }
                     }
                 }
 
                 LConnection->CloseConnection(true);
 
-                LConnection->Reply()->ContentType = CHTTPReply::json;
-                LConnection->Reply()->Content = LReply->Content;
+                LReply->ContentType = CHTTPReply::json;
+                LReply->Content = LProxyReply->Content;
 
-                LConnection->SendReply(LReply->Status, nullptr, true);
+                LConnection->SendReply(LProxyReply->Status, nullptr, true);
             }
 
             return true;
@@ -221,8 +248,8 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSBAcquiring::SetObjectData(CHTTPServerConnection *AConnection, const CString &Token, const CJSON &Payload,
-            const CString &Agent) {
+        void CSBAcquiring::AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Path,
+            const CJSON &Payload, const CString &Agent) {
 
             auto OnExecuted = [this](CPQPollQuery *APollQuery) {
 
@@ -252,7 +279,7 @@ namespace Apostol {
 
             SQL.Add(CString().Format("SELECT * FROM daemon.fetch(%s, '%s', '%s'::jsonb, %s, %s);",
                                      PQQuoteLiteral(Token).c_str(),
-                                     "/object/data/set",
+                                     Path.c_str(),
                                      Payload.ToString().c_str(),
                                      PQQuoteLiteral(Agent).c_str(),
                                      PQQuoteLiteral(Host).c_str()
@@ -375,8 +402,6 @@ namespace Apostol {
             auto LProxy = GetProxy(AConnection);
             auto LProxyRequest = LProxy->Request();
 
-            const auto& clientId = LRequest->FormData.Values("clientId");
-
             const auto& LProfile = LRequest->Params["profile"];
             const auto& profile = LProfile.IsEmpty() ? "main" : LProfile;
 
@@ -408,7 +433,6 @@ namespace Apostol {
                 return;
 
             AConnection->Data().Values("Token", LAuthorization.Token);
-            AConnection->Data().Values("clientId", clientId);
 
             CLocation Location(uri + LPath);
 
