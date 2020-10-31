@@ -405,9 +405,9 @@ namespace Apostol {
             const auto& LProfile = LRequest->Params["profile"];
             const auto& profile = LProfile.IsEmpty() ? "main" : LProfile;
 
-            const auto& uri = m_Profiles[profile].Value()["uri"];
-            const auto& userName = m_Profiles[profile].Value()["username"];
-            const auto& password = m_Profiles[profile].Value()["password"];
+            const auto& uri = m_Profiles[profile]["uri"];
+            const auto& userName = m_Profiles[profile]["username"];
+            const auto& password = m_Profiles[profile]["password"];
 
             CStringList LRouts;
             SplitColumns(LRequest->Location.pathname, LRouts, '/');
