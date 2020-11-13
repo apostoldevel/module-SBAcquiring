@@ -173,50 +173,41 @@ namespace Apostol {
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoProxyException(CTCPConnection *AConnection, const Delphi::Exception::Exception &E) {
-
-            auto LProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
-            auto LProxy = dynamic_cast<CHTTPProxy*> (LProxyConnection->Client());
-
-            auto LConnection = LProxy->Connection();
-
-            auto LReply = LProxyConnection->Reply();
-
-            DebugReply(LReply);
-
-            LConnection->SendStockReply(CHTTPReply::internal_server_error, true);
+            auto LProxyConnection = dynamic_cast<CHTTPClientConnection *> (AConnection);
+            auto LProxy = dynamic_cast<CHTTPProxy *> (LProxyConnection->Client());
 
             Log()->Error(APP_LOG_EMERG, 0, "[%s:%d] %s", LProxy->Host().c_str(), LProxy->Port(), E.what());
         }
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoEventHandlerException(CPollEventHandler *AHandler, const Delphi::Exception::Exception &E) {
-            auto LConnection = dynamic_cast<CHTTPClientConnection*> (AHandler->Binding());
-            auto LProxy = dynamic_cast<CHTTPProxy*> (LConnection->Client());
-
-            if (Assigned(LProxy)) {
-                auto LReply = LProxy->Connection()->Reply();
-                ExceptionToJson(0, E, LReply->Content);
-                LProxy->Connection()->SendReply(CHTTPReply::internal_server_error, nullptr, true);
-            }
-
-            Log()->Error(APP_LOG_EMERG, 0, E.what());
+            auto LProxyConnection = dynamic_cast<CHTTPClientConnection *> (AHandler->Binding());
+            DoProxyException(LProxyConnection, E);
         }
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoProxyConnected(CObject *Sender) {
             auto LConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
-            if (LConnection != nullptr) {
-                Log()->Message(_T("[%s:%d] Proxy connected."), LConnection->Socket()->Binding()->PeerIP(),
-                               LConnection->Socket()->Binding()->PeerPort());
+            if (Assigned(LConnection)) {
+                if (!LConnection->ClosedGracefully()) {
+                    auto socket = LConnection->Socket();
+                    if (Assigned(socket)) {
+                        Log()->Message(_T("[%s:%d] Proxy connected."), socket->Binding()->PeerIP(), socket->Binding()->PeerPort());
+                    }
+                }
             }
         }
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoProxyDisconnected(CObject *Sender) {
             auto LConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
-            if (LConnection != nullptr) {
-                Log()->Message(_T("[%s:%d] Proxy disconnected."), LConnection->Socket()->Binding()->PeerIP(),
-                               LConnection->Socket()->Binding()->PeerPort());
+            if (Assigned(LConnection)) {
+                if (!LConnection->ClosedGracefully()) {
+                    auto socket = LConnection->Socket();
+                    if (Assigned(socket)) {
+                        Log()->Message(_T("[%s:%d] Proxy disconnected."), socket->Binding()->PeerIP(), socket->Binding()->PeerPort());
+                    }
+                }
             }
         }
         //--------------------------------------------------------------------------------------------------------------
