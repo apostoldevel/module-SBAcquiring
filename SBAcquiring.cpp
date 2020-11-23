@@ -46,12 +46,7 @@ namespace Apostol {
             m_Headers.Add("Authorization");
 
             CSBAcquiring::InitMethods();
-#ifdef _DEBUG
-            m_HeartbeatInterval = (CDateTime) 15 / SecsPerDay; // 15 sec
-#else
-            m_HeartbeatInterval = (CDateTime) 30 / SecsPerDay; // 30 sec
-#endif
-            m_FixedDate = Now();
+
             m_CheckDate = Now();
         }
         //--------------------------------------------------------------------------------------------------------------

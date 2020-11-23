@@ -40,11 +40,8 @@ namespace Apostol {
         class CSBAcquiring: public CApostolModule {
         private:
 
-            CDateTime m_HeartbeatInterval;
-
             CHTTPProxyManager m_ProxyManager;
 
-            CDateTime m_FixedDate;
             CDateTime m_CheckDate;
 
             CString m_ClientToken;
