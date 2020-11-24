@@ -128,7 +128,7 @@ namespace Apostol {
                                 Payload.Object().AddPair("client", clientId);
                             Payload.Object().AddPair("uuid", orderId);
 
-                            AuthorizedFetch(LConnection, Token, "/order/set", Payload, Agent);
+                            AuthorizedFetch(LConnection, Token, "POST", "/api/v1/order/set", Payload, Agent);
 
                         } else if (LAction == "getBindings.do") {
 
@@ -150,7 +150,7 @@ namespace Apostol {
                             Payload.Object().AddPair("id", clientId);
                             Payload.Object().AddPair("data", DataArray);
 
-                            AuthorizedFetch(LConnection, Token, "/object/data/set", Payload, Agent);
+                            AuthorizedFetch(LConnection, Token, "POST", "/api/v1/object/data/set", Payload, Agent);
                         }
                     }
                 }
@@ -234,8 +234,8 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        void CSBAcquiring::AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Path,
-            const CJSON &Payload, const CString &Agent) {
+        void CSBAcquiring::AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Method,
+                const CString &Path, const CJSON &Payload, const CString &Agent) {
 
             auto OnExecuted = [this](CPQPollQuery *APollQuery) {
 
@@ -263,8 +263,9 @@ namespace Apostol {
 
             CStringList SQL;
 
-            SQL.Add(CString().Format("SELECT * FROM daemon.fetch(%s, '%s', '%s'::jsonb, %s, %s);",
+            SQL.Add(CString().Format("SELECT * FROM daemon.fetch(%s, '%s', '%s', '%s'::jsonb, %s, %s);",
                                      PQQuoteLiteral(Token).c_str(),
+                                     Method.c_str(),
                                      Path.c_str(),
                                      Payload.ToString().c_str(),
                                      PQQuoteLiteral(Agent).c_str(),

@@ -50,8 +50,8 @@ namespace Apostol {
 
             void InitMethods() override;
 
-            void AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Path,
-                const CJSON &Payload, const CString &Agent);
+            void AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Method,
+                const CString &Path, const CJSON &Payload, const CString &Agent);
 
             static bool CheckAuthorizationData(CHTTPRequest *ARequest, CAuthorization &Authorization);
 
