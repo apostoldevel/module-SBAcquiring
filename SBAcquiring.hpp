@@ -46,7 +46,7 @@ namespace Apostol {
 
             CString m_ClientToken;
 
-            TPairs<CStringList> m_Profiles;
+            CStringListPairs m_Profiles;
 
             void InitMethods() override;
 
