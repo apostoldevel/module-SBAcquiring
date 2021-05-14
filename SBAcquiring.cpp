@@ -44,10 +44,7 @@ namespace Apostol {
 
         CSBAcquiring::CSBAcquiring(CModuleProcess *AProcess) : CApostolModule(AProcess, "sba", "worker/sba") {
             m_Headers.Add("Authorization");
-
             CSBAcquiring::InitMethods();
-
-            m_CheckDate = Now();
         }
         //--------------------------------------------------------------------------------------------------------------
 
@@ -83,40 +80,40 @@ namespace Apostol {
 
         bool CSBAcquiring::DoProxyExecute(CTCPConnection *AConnection) {
 
-            auto LProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
-            auto LProxy = dynamic_cast<CHTTPProxy*> (LProxyConnection->Client());
+            auto pProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
+            auto pProxy = dynamic_cast<CHTTPProxy*> (pProxyConnection->Client());
 
-            auto LProxyRequest = LProxyConnection->Request();
-            auto LProxyReply = LProxyConnection->Reply();
+            auto pProxyRequest = pProxyConnection->Request();
+            auto pProxyReply = pProxyConnection->Reply();
 
-            DebugReply(LProxyReply);
+            DebugReply(pProxyReply);
 
-            auto LConnection = LProxy->Connection();
+            auto pConnection = pProxy->Connection();
 
-            auto LRequest = LConnection->Request();
-            auto LReply = LConnection->Reply();
+            auto pRequest = pConnection->Request();
+            auto pReply = pConnection->Reply();
 
-            if (LConnection->Connected()) {
+            if (pConnection->Connected()) {
 
-                CStringList LRouts;
-                SplitColumns(LProxyRequest->Location.pathname, LRouts, '/');
+                CStringList Routs;
+                SplitColumns(pProxyRequest->Location.pathname, Routs, '/');
 
-                if (LRouts.Count() >= 3) {
+                if (Routs.Count() >= 3) {
 
-                    const auto& LAction = LRouts[2];
+                    const auto& action = Routs[2];
 
-                    const auto& reply = CJSON(LProxyReply->Content);
+                    const auto& reply = CJSON(pProxyReply->Content);
                     const auto& errorCode = reply.HasOwnProperty("errorCode") ? reply["errorCode"].AsInteger() : 0;
 
                     if (errorCode == 0) {
 
-                        const auto& Token = LConnection->Data()["Token"];
-                        const auto& Agent = LProxyRequest->UserAgent;
+                        const auto& Token = pConnection->Data()["Token"];
+                        const auto& Agent = pProxyRequest->UserAgent;
 
-                        if (LAction == "registerPreAuth.do") {
+                        if (action == "registerPreAuth.do") {
 
-                            const auto& orderNumber = LRequest->FormData.Values("orderNumber");
-                            const auto& clientId = LRequest->FormData.Values("clientId");
+                            const auto& orderNumber = pRequest->FormData.Values("orderNumber");
+                            const auto& clientId = pRequest->FormData.Values("clientId");
 
                             const auto& orderId = reply["orderId"];
 
@@ -128,11 +125,11 @@ namespace Apostol {
                                 Payload.Object().AddPair("client", clientId);
                             Payload.Object().AddPair("uuid", orderId);
 
-                            AuthorizedFetch(LConnection, Token, "POST", "/api/v1/order/set", Payload, Agent);
+                            AuthorizedFetch(pConnection, Token, "POST", "/api/v1/order/set", Payload, Agent);
 
-                        } else if (LAction == "getBindings.do") {
+                        } else if (action == "getBindings.do") {
 
-                            const auto& clientId = LRequest->FormData.Values("clientId");
+                            const auto& clientId = pRequest->FormData.Values("clientId");
                             const auto& bindings = reply["bindings"];
 
                             CJSONValue Data;
@@ -150,17 +147,17 @@ namespace Apostol {
                             Payload.Object().AddPair("id", clientId);
                             Payload.Object().AddPair("data", DataArray);
 
-                            AuthorizedFetch(LConnection, Token, "POST", "/api/v1/object/data/set", Payload, Agent);
+                            AuthorizedFetch(pConnection, Token, "POST", "/api/v1/object/data/set", Payload, Agent);
                         }
                     }
                 }
 
-                LConnection->CloseConnection(true);
+                pConnection->CloseConnection(true);
 
-                LReply->ContentType = CHTTPReply::json;
-                LReply->Content = LProxyReply->Content;
+                pReply->ContentType = CHTTPReply::json;
+                pReply->Content = pProxyReply->Content;
 
-                LConnection->SendReply(LProxyReply->Status, nullptr, true);
+                pConnection->SendReply(pProxyReply->Status, nullptr, true);
             }
 
             return true;
@@ -168,24 +165,24 @@ namespace Apostol {
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoProxyException(CTCPConnection *AConnection, const Delphi::Exception::Exception &E) {
-            auto LProxyConnection = dynamic_cast<CHTTPClientConnection *> (AConnection);
-            auto LProxy = dynamic_cast<CHTTPProxy *> (LProxyConnection->Client());
+            auto pProxyConnection = dynamic_cast<CHTTPClientConnection *> (AConnection);
+            auto pProxy = dynamic_cast<CHTTPProxy *> (pProxyConnection->Client());
 
-            Log()->Error(APP_LOG_EMERG, 0, "[%s:%d] %s", LProxy->Host().c_str(), LProxy->Port(), E.what());
+            Log()->Error(APP_LOG_EMERG, 0, "[%s:%d] %s", pProxy->Host().c_str(), pProxy->Port(), E.what());
         }
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoEventHandlerException(CPollEventHandler *AHandler, const Delphi::Exception::Exception &E) {
-            auto LProxyConnection = dynamic_cast<CHTTPClientConnection *> (AHandler->Binding());
-            DoProxyException(LProxyConnection, E);
+            auto pProxyConnection = dynamic_cast<CHTTPClientConnection *> (AHandler->Binding());
+            DoProxyException(pProxyConnection, E);
         }
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoProxyConnected(CObject *Sender) {
-            auto LConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
-            if (Assigned(LConnection)) {
-                if (!LConnection->ClosedGracefully()) {
-                    auto socket = LConnection->Socket();
+            auto pConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
+            if (Assigned(pConnection)) {
+                if (!pConnection->ClosedGracefully()) {
+                    auto socket = pConnection->Socket();
                     if (Assigned(socket)) {
                         Log()->Message(_T("[%s:%d] Proxy connected."), socket->Binding()->PeerIP(), socket->Binding()->PeerPort());
                     }
@@ -195,10 +192,10 @@ namespace Apostol {
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::DoProxyDisconnected(CObject *Sender) {
-            auto LConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
-            if (Assigned(LConnection)) {
-                if (!LConnection->ClosedGracefully()) {
-                    auto socket = LConnection->Socket();
+            auto pConnection = dynamic_cast<CHTTPClientConnection*> (Sender);
+            if (Assigned(pConnection)) {
+                if (!pConnection->ClosedGracefully()) {
+                    auto socket = pConnection->Socket();
                     if (Assigned(socket)) {
                         Log()->Message(_T("[%s:%d] Proxy disconnected."), socket->Binding()->PeerIP(), socket->Binding()->PeerPort());
                     }
@@ -208,58 +205,56 @@ namespace Apostol {
         //--------------------------------------------------------------------------------------------------------------
 
         CHTTPProxy *CSBAcquiring::GetProxy(CHTTPServerConnection *AConnection) {
-            auto LProxy = m_ProxyManager.Add(AConnection);
+            auto pProxy = m_ProxyManager.Add(AConnection);
 #if defined(_GLIBCXX_RELEASE) && (_GLIBCXX_RELEASE >= 9)
-            LProxy->OnVerbose([this](auto && Sender, auto && AConnection, auto && AFormat, auto && args) { DoVerbose(Sender, AConnection, AFormat, args); });
+            pProxy->OnVerbose([this](auto && Sender, auto && AConnection, auto && AFormat, auto && args) { DoVerbose(Sender, AConnection, AFormat, args); });
 
-            LProxy->OnExecute([this](auto && AConnection) { return DoProxyExecute(AConnection); });
+            pProxy->OnExecute([this](auto && AConnection) { return DoProxyExecute(AConnection); });
 
-            LProxy->OnException([this](auto && AConnection, auto && AException) { DoProxyException(AConnection, AException); });
-            LProxy->OnEventHandlerException([this](auto && AHandler, auto && AException) { DoEventHandlerException(AHandler, AException); });
+            pProxy->OnException([this](auto && AConnection, auto && AException) { DoProxyException(AConnection, AException); });
+            pProxy->OnEventHandlerException([this](auto && AHandler, auto && AException) { DoEventHandlerException(AHandler, AException); });
 
-            LProxy->OnConnected([this](auto && Sender) { DoProxyConnected(Sender); });
-            LProxy->OnDisconnected([this](auto && Sender) { DoProxyDisconnected(Sender); });
+            pProxy->OnConnected([this](auto && Sender) { DoProxyConnected(Sender); });
+            pProxy->OnDisconnected([this](auto && Sender) { DoProxyDisconnected(Sender); });
 #else
-            LProxy->OnVerbose(std::bind(&CSBAcquiring::DoVerbose, this, _1, _2, _3, _4));
+            pProxy->OnVerbose(std::bind(&CSBAcquiring::DoVerbose, this, _1, _2, _3, _4));
 
-            LProxy->OnExecute(std::bind(&CSBAcquiring::DoProxyExecute, this, _1));
+            pProxy->OnExecute(std::bind(&CSBAcquiring::DoProxyExecute, this, _1));
 
-            LProxy->OnException(std::bind(&CSBAcquiring::DoProxyException, this, _1, _2));
-            LProxy->OnEventHandlerException(std::bind(&CSBAcquiring::DoEventHandlerException, this, _1, _2));
+            pProxy->OnException(std::bind(&CSBAcquiring::DoProxyException, this, _1, _2));
+            pProxy->OnEventHandlerException(std::bind(&CSBAcquiring::DoEventHandlerException, this, _1, _2));
 
-            LProxy->OnConnected(std::bind(&CSBAcquiring::DoProxyConnected, this, _1));
-            LProxy->OnDisconnected(std::bind(&CSBAcquiring::DoProxyDisconnected, this, _1));
+            pProxy->OnConnected(std::bind(&CSBAcquiring::DoProxyConnected, this, _1));
+            pProxy->OnDisconnected(std::bind(&CSBAcquiring::DoProxyDisconnected, this, _1));
 #endif
-            return LProxy;
+            return pProxy;
         }
         //--------------------------------------------------------------------------------------------------------------
 
         void CSBAcquiring::AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Method,
                 const CString &Path, const CJSON &Payload, const CString &Agent) {
 
-            auto OnExecuted = [this](CPQPollQuery *APollQuery) {
+            auto OnExecuted = [](CPQPollQuery *APollQuery) {
 
-                CPQResult *Result;
+                CPQResult *pResult;
 
                 try {
                     for (int I = 0; I < APollQuery->Count(); I++) {
-                        Result = APollQuery->Results(I);
+                        pResult = APollQuery->Results(I);
 
-                        if (Result->ExecStatus() != PGRES_TUPLES_OK)
-                            throw Delphi::Exception::EDBError(Result->GetErrorMessage());
+                        if (pResult->ExecStatus() != PGRES_TUPLES_OK)
+                            throw Delphi::Exception::EDBError(pResult->GetErrorMessage());
                     }
                 } catch (std::exception &e) {
-                    m_CheckDate = Now() + (CDateTime) 60 / SecsPerDay;
                     Log()->Error(APP_LOG_EMERG, 0, e.what());
                 }
             };
 
-            auto OnException = [this](CPQPollQuery *APollQuery, const Delphi::Exception::Exception &E) {
-                m_CheckDate = Now() + (CDateTime) 60 / SecsPerDay;
+            auto OnException = [](CPQPollQuery *APollQuery, const Delphi::Exception::Exception &E) {
                 Log()->Error(APP_LOG_EMERG, 0, E.what());
             };
 
-            const auto& Host = GetHost(AConnection);
+            const auto& host = GetRealIP(AConnection);
 
             CStringList SQL;
 
@@ -269,13 +264,12 @@ namespace Apostol {
                                      Path.c_str(),
                                      Payload.ToString().c_str(),
                                      PQQuoteLiteral(Agent).c_str(),
-                                     PQQuoteLiteral(Host).c_str()
+                                     PQQuoteLiteral(host).c_str()
             ));
 
             try {
                 ExecSQL(SQL, AConnection, OnExecuted, OnException);
             } catch (Delphi::Exception::Exception &E) {
-                m_CheckDate = Now() + (CDateTime) 10 / SecsPerDay;
                 Log()->Error(APP_LOG_EMERG, 0, E.what());
             }
         }
@@ -322,15 +316,15 @@ namespace Apostol {
 
         bool CSBAcquiring::CheckAuthorizationData(CHTTPRequest *ARequest, CAuthorization &Authorization) {
 
-            const auto &LHeaders = ARequest->Headers;
-            const auto &LCookies = ARequest->Cookies;
+            const auto &headers = ARequest->Headers;
+            const auto &cookies = ARequest->Cookies;
 
-            const auto &LAuthorization = LHeaders.Values(_T("Authorization"));
+            const auto &authorization = headers.Values(_T("Authorization"));
 
-            if (LAuthorization.IsEmpty()) {
+            if (authorization.IsEmpty()) {
 
-                const auto &headerSession = LHeaders.Values(_T("Session"));
-                const auto &headerSecret = LHeaders.Values(_T("Secret"));
+                const auto &headerSession = headers.Values(_T("Session"));
+                const auto &headerSecret = headers.Values(_T("Secret"));
 
                 Authorization.Username = headerSession;
                 Authorization.Password = headerSecret;
@@ -342,7 +336,7 @@ namespace Apostol {
                 Authorization.Type = CAuthorization::atSession;
 
             } else {
-                Authorization << LAuthorization;
+                Authorization << authorization;
             }
 
             return true;
@@ -351,10 +345,10 @@ namespace Apostol {
 
         bool CSBAcquiring::CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization) {
 
-            auto LRequest = AConnection->Request();
+            auto pRequest = AConnection->Request();
 
             try {
-                if (CheckAuthorizationData(LRequest, Authorization)) {
+                if (CheckAuthorizationData(pRequest, Authorization)) {
                     if (Authorization.Schema == CAuthorization::asBearer) {
                         VerifyToken(Authorization.Token);
                         return true;
@@ -381,25 +375,25 @@ namespace Apostol {
 
         void CSBAcquiring::DoProxy(CHTTPServerConnection *AConnection) {
 
-            auto LRequest = AConnection->Request();
-            auto LReply = AConnection->Reply();
+            auto pRequest = AConnection->Request();
+            auto pReply = AConnection->Reply();
 
-            LReply->ContentType = CHTTPReply::json;
+            pReply->ContentType = CHTTPReply::json;
 
-            auto LProxy = GetProxy(AConnection);
-            auto LProxyRequest = LProxy->Request();
+            auto pProxy = GetProxy(AConnection);
+            auto pProxyRequest = pProxy->Request();
 
-            const auto& LProfile = LRequest->Params["profile"];
-            const auto& profile = LProfile.IsEmpty() ? "main" : LProfile;
+            const auto& _profile = pRequest->Params["profile"];
+            const auto& profile = _profile.IsEmpty() ? "main" : _profile;
 
             const auto& uri = m_Profiles[profile]["uri"];
             const auto& userName = m_Profiles[profile]["username"];
             const auto& password = m_Profiles[profile]["password"];
 
-            CStringList LRouts;
-            SplitColumns(LRequest->Location.pathname, LRouts, '/');
+            CStringList Routs;
+            SplitColumns(pRequest->Location.pathname, Routs, '/');
 
-            if (LRouts.Count() < 2) {
+            if (Routs.Count() < 2) {
                 AConnection->SendStockReply(CHTTPReply::not_found);
                 return;
             }
@@ -409,52 +403,52 @@ namespace Apostol {
                 return;
             }
 
-            CString LPath;
-            for (int I = 1; I < LRouts.Count(); ++I) {
-                LPath.Append('/');
-                LPath.Append(LRouts[I]);
+            CString Path;
+            for (int I = 1; I < Routs.Count(); ++I) {
+                Path.Append('/');
+                Path.Append(Routs[I]);
             }
 
-            CAuthorization LAuthorization;
-            if (!CheckAuthorization(AConnection, LAuthorization))
+            CAuthorization Authorization;
+            if (!CheckAuthorization(AConnection, Authorization))
                 return;
 
-            AConnection->Data().Values("Token", LAuthorization.Token);
+            AConnection->Data().Values("Token", Authorization.Token);
 
-            CLocation Location(uri + LPath);
+            CLocation Location(uri + Path);
 
-            LProxy->Host() = Location.hostname;
-            LProxy->Port(Location.port);
-            LProxy->UsedSSL(Location.port == 443);
+            pProxy->Host() = Location.hostname;
+            pProxy->Port(Location.port);
+            pProxy->UsedSSL(Location.port == 443);
 
-            const auto& LContentType = LRequest->Headers.Values("Content-Type");
-            const auto& LUserAgent = LRequest->Headers.Values("User-Agent");
+            const auto& content_type = pRequest->Headers.Values("Content-Type");
+            const auto& user_agent = pRequest->Headers.Values("User-Agent");
 
-            LProxyRequest->Clear();
+            pProxyRequest->Clear();
 
-            LProxyRequest->Location = Location;
-            LProxyRequest->UserAgent = LUserAgent;
+            pProxyRequest->Location = Location;
+            pProxyRequest->UserAgent = user_agent;
 
-            LProxyRequest->Content = LRequest->Content;
+            pProxyRequest->Content = pRequest->Content;
 
-            if (!LProxyRequest->Content.IsEmpty())
-                LProxyRequest->Content << _T("&");
+            if (!pProxyRequest->Content.IsEmpty())
+                pProxyRequest->Content << _T("&");
 
-            LProxyRequest->Content << _T("userName=");
-            LProxyRequest->Content << CHTTPServer::URLEncode(userName);
+            pProxyRequest->Content << _T("userName=");
+            pProxyRequest->Content << CHTTPServer::URLEncode(userName);
 
-            LProxyRequest->Content << _T("&password=");
-            LProxyRequest->Content << CHTTPServer::URLEncode(password);
+            pProxyRequest->Content << _T("&password=");
+            pProxyRequest->Content << CHTTPServer::URLEncode(password);
 
-            LProxyRequest->CloseConnection = true;
+            pProxyRequest->CloseConnection = true;
 
             AConnection->CloseConnection(false);
 
-            CHTTPRequest::Prepare(LProxyRequest, LRequest->Method.c_str(), Location.pathname.c_str(), LContentType.c_str());
+            CHTTPRequest::Prepare(pProxyRequest, pRequest->Method.c_str(), Location.pathname.c_str(), content_type.c_str());
 
-            DebugRequest(LProxyRequest);
+            DebugRequest(pProxyRequest);
 
-            LProxy->Active(true);
+            pProxy->Active(true);
         }
         //--------------------------------------------------------------------------------------------------------------
 

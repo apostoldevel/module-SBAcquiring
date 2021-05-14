@@ -42,10 +42,6 @@ namespace Apostol {
 
             CHTTPProxyManager m_ProxyManager;
 
-            CDateTime m_CheckDate;
-
-            CString m_ClientToken;
-
             CStringListPairs m_Profiles;
 
             void InitMethods() override;
