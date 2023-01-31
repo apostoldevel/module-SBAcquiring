@@ -83,37 +83,37 @@ namespace Apostol {
             auto pProxyConnection = dynamic_cast<CHTTPClientConnection*> (AConnection);
             auto pProxy = dynamic_cast<CHTTPProxy*> (pProxyConnection->Client());
 
-            auto pProxyRequest = pProxyConnection->Request();
-            auto pProxyReply = pProxyConnection->Reply();
+            const auto &caProxyRequest = pProxyConnection->Request();
+            const auto &caProxyReply = pProxyConnection->Reply();
 
-            DebugReply(pProxyReply);
+            DebugReply(caProxyReply);
 
             auto pConnection = pProxy->Connection();
 
-            auto pRequest = pConnection->Request();
-            auto pReply = pConnection->Reply();
+            const auto &caRequest = pConnection->Request();
+            auto &Reply = pConnection->Reply();
 
             if (pConnection->Connected()) {
 
                 CStringList Routs;
-                SplitColumns(pProxyRequest->Location.pathname, Routs, '/');
+                SplitColumns(caProxyRequest.Location.pathname, Routs, '/');
 
                 if (Routs.Count() >= 3) {
 
                     const auto& action = Routs[2];
 
-                    const auto& reply = CJSON(pProxyReply->Content);
+                    const auto& reply = CJSON(caProxyReply.Content);
                     const auto& errorCode = reply.HasOwnProperty("errorCode") ? reply["errorCode"].AsInteger() : 0;
 
                     if (errorCode == 0) {
 
                         const auto& Token = pConnection->Data()["Token"];
-                        const auto& Agent = pProxyRequest->UserAgent;
+                        const auto& Agent = caProxyRequest.UserAgent;
 
                         if (action == "registerPreAuth.do") {
 
-                            const auto& orderNumber = pRequest->FormData.Values("orderNumber");
-                            const auto& clientId = pRequest->FormData.Values("clientId");
+                            const auto& orderNumber = caRequest.FormData.Values("orderNumber");
+                            const auto& clientId = caRequest.FormData.Values("clientId");
 
                             const auto& orderId = reply["orderId"];
 
@@ -129,7 +129,7 @@ namespace Apostol {
 
                         } else if (action == "getBindings.do") {
 
-                            const auto& clientId = pRequest->FormData.Values("clientId");
+                            const auto& clientId = caRequest.FormData.Values("clientId");
                             const auto& bindings = reply["bindings"];
 
                             CJSONValue Data;
@@ -154,10 +154,10 @@ namespace Apostol {
 
                 pConnection->CloseConnection(true);
 
-                pReply->ContentType = CHTTPReply::json;
-                pReply->Content = pProxyReply->Content;
+                Reply.ContentType = CHTTPReply::json;
+                Reply.Content = caProxyReply.Content;
 
-                pConnection->SendReply(pProxyReply->Status, nullptr, true);
+                pConnection->SendReply(caProxyReply.Status, nullptr, true);
             }
 
             return true;
@@ -314,10 +314,10 @@ namespace Apostol {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        bool CSBAcquiring::CheckAuthorizationData(CHTTPRequest *ARequest, CAuthorization &Authorization) {
+        bool CSBAcquiring::CheckAuthorizationData(const CHTTPRequest &Request, CAuthorization &Authorization) {
 
-            const auto &headers = ARequest->Headers;
-            const auto &cookies = ARequest->Cookies;
+            const auto &headers = Request.Headers;
+            const auto &cookies = Request.Cookies;
 
             const auto &authorization = headers.Values(_T("Authorization"));
 
@@ -345,10 +345,10 @@ namespace Apostol {
 
         bool CSBAcquiring::CheckAuthorization(CHTTPServerConnection *AConnection, CAuthorization &Authorization) {
 
-            auto pRequest = AConnection->Request();
+            const auto &caRequest = AConnection->Request();
 
             try {
-                if (CheckAuthorizationData(pRequest, Authorization)) {
+                if (CheckAuthorizationData(caRequest, Authorization)) {
                     if (Authorization.Schema == CAuthorization::asBearer) {
                         VerifyToken(Authorization.Token);
                         return true;
@@ -375,15 +375,15 @@ namespace Apostol {
 
         void CSBAcquiring::DoProxy(CHTTPServerConnection *AConnection) {
 
-            auto pRequest = AConnection->Request();
-            auto pReply = AConnection->Reply();
+            const auto &caRequest = AConnection->Request();
+            auto &Reply = AConnection->Reply();
 
-            pReply->ContentType = CHTTPReply::json;
+            Reply.ContentType = CHTTPReply::json;
 
             auto pProxy = GetProxy(AConnection);
-            auto pProxyRequest = pProxy->Request();
+            auto &ProxyRequest = pProxy->Request();
 
-            const auto& _profile = pRequest->Params["profile"];
+            const auto& _profile = caRequest.Params["profile"];
             const auto& profile = _profile.IsEmpty() ? "main" : _profile;
 
             const auto& uri = m_Profiles[profile]["uri"];
@@ -391,7 +391,7 @@ namespace Apostol {
             const auto& password = m_Profiles[profile]["password"];
 
             CStringList Routs;
-            SplitColumns(pRequest->Location.pathname, Routs, '/');
+            SplitColumns(caRequest.Location.pathname, Routs, '/');
 
             if (Routs.Count() < 2) {
                 AConnection->SendStockReply(CHTTPReply::not_found);
@@ -421,32 +421,32 @@ namespace Apostol {
             pProxy->Port(Location.port);
             pProxy->UsedSSL(Location.port == 443);
 
-            const auto& content_type = pRequest->Headers.Values("Content-Type");
-            const auto& user_agent = pRequest->Headers.Values("User-Agent");
+            const auto& content_type = caRequest.Headers.Values("Content-Type");
+            const auto& user_agent = caRequest.Headers.Values("User-Agent");
 
-            pProxyRequest->Clear();
+            ProxyRequest.Clear();
 
-            pProxyRequest->Location = Location;
-            pProxyRequest->UserAgent = user_agent;
+            ProxyRequest.Location = Location;
+            ProxyRequest.UserAgent = user_agent;
 
-            pProxyRequest->Content = pRequest->Content;
+            ProxyRequest.Content = caRequest.Content;
 
-            if (!pProxyRequest->Content.IsEmpty())
-                pProxyRequest->Content << _T("&");
+            if (!ProxyRequest.Content.IsEmpty())
+                ProxyRequest.Content << _T("&");
 
-            pProxyRequest->Content << _T("userName=");
-            pProxyRequest->Content << CHTTPServer::URLEncode(userName);
+            ProxyRequest.Content << _T("userName=");
+            ProxyRequest.Content << CHTTPServer::URLEncode(userName);
 
-            pProxyRequest->Content << _T("&password=");
-            pProxyRequest->Content << CHTTPServer::URLEncode(password);
+            ProxyRequest.Content << _T("&password=");
+            ProxyRequest.Content << CHTTPServer::URLEncode(password);
 
-            pProxyRequest->CloseConnection = true;
+            ProxyRequest.CloseConnection = true;
 
             AConnection->CloseConnection(false);
 
-            CHTTPRequest::Prepare(pProxyRequest, pRequest->Method.c_str(), Location.pathname.c_str(), content_type.c_str());
+            CHTTPRequest::Prepare(ProxyRequest, caRequest.Method.c_str(), Location.pathname.c_str(), content_type.c_str());
 
-            DebugRequest(pProxyRequest);
+            DebugRequest(ProxyRequest);
 
             pProxy->Active(true);
         }

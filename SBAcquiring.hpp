@@ -49,7 +49,7 @@ namespace Apostol {
             void AuthorizedFetch(CHTTPServerConnection *AConnection, const CString &Token, const CString &Method,
                 const CString &Path, const CJSON &Payload, const CString &Agent);
 
-            static bool CheckAuthorizationData(CHTTPRequest *ARequest, CAuthorization &Authorization);
+            static bool CheckAuthorizationData(const CHTTPRequest &Request, CAuthorization &Authorization);
 
             void VerifyToken(const CString &Token);
 
